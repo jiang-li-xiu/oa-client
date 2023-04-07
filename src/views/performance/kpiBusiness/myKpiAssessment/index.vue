@@ -1,0 +1,462 @@
+<template>
+  <div class="app-container">
+    <div class="bg-border-color-10">
+      <div class="flex-center">
+        <img src="@/assets/images/look-over.png" alt="" class="list-img" />
+        <p class="font-15 font-700 color-50 ml0">筛选查询</p>
+      </div>
+      <el-form
+        class="flex-align-between flex-wrap mt20 m10"
+        :model="queryParams"
+        ref="queryForm"
+        :inline="true"
+        v-show="showSearch"
+        label-width="70px"
+      >
+        <el-form-item label="考核年" prop="assessmentYear">
+          <el-input
+            v-model="queryParams.assessmentYear"
+            placeholder="请输入考核年"
+            clearable
+            size="small"
+            @keyup.enter.native="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="考核月" prop="assessmentMonth">
+          <el-input
+            v-model="queryParams.assessmentMonth"
+            placeholder="请输入考核月"
+            clearable
+            size="small"
+            @keyup.enter.native="handleQuery"
+          />
+        </el-form-item>
+        <!-- <el-form-item label="部门" prop="deptName">
+        <el-input
+          v-model="queryParams.deptName"
+          placeholder="请输入部门"
+          clearable
+          size="small"
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="姓名" prop="nickName">
+        <el-input
+          v-model="queryParams.nickName"
+          placeholder="请输入姓名"
+          clearable
+          size="small"
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item> -->
+        <el-form-item label="考核类型" prop="assessmentType">
+          <el-select
+            v-model="queryParams.assessmentType"
+            placeholder="请选择考核类型"
+            clearable
+            size="small"
+          >
+            <el-option
+              v-for="dict in assessmentTypeOptions"
+              :key="dict.dictValue"
+              :label="dict.dictLabel"
+              :value="dict.dictValue"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="考核状态" prop="isStart">
+          <el-select
+            v-model="queryParams.isStart"
+            placeholder="请选择考核状态"
+            clearable
+            size="small"
+          >
+            <el-option
+              v-for="dict in assessmentStatusOptions"
+              v-show="dict.dictValue != 0"
+              :key="dict.dictValue"
+              :label="dict.dictLabel"
+              :value="dict.dictValue"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div class="flex-cc" v-show="showSearch">
+        <div @click="handleQuery" class="cursor font-14 search-btn mr20">
+          <i class="el-icon-search"></i>
+          搜索
+        </div>
+
+        <div @click="resetQuery" class="cursor font-14 reset-btn">
+          <i class="el-icon-refresh"></i>
+          重置
+        </div>
+      </div>
+    </div>
+
+    <!--   <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="el-icon-plus"
+          size="mini"
+          @click="handleAdd"
+          v-hasPermi="['business:assessmentConfigure:add']"
+        >新增</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="success"
+          plain
+          icon="el-icon-edit"
+          size="mini"
+          :disabled="single"
+          @click="handleUpdate"
+          v-hasPermi="['business:assessmentConfigure:edit']"
+        >修改</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="el-icon-delete"
+          size="mini"
+          :disabled="multiple"
+          @click="handleDelete"
+          v-hasPermi="['business:assessmentConfigure:remove']"
+        >删除</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          icon="el-icon-download"
+          size="mini"
+          @click="handleExport"
+          v-hasPermi="['business:assessmentConfigure:export']"
+        >导出</el-button>
+      </el-col>
+      <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
+    </el-row> -->
+
+    <div class="bg-border-color-10">
+      <div class="flex-align-center mb10">
+        <img src="@/assets/images/list.png" alt="" class="list-img ml0 mr10" />
+        <p class="color-50 font-15 font-700">数据列表</p>
+      </div>
+      <el-table
+        v-loading="loading"
+        :data="assessmentConfigureList"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column
+          label="编号"
+          align="center"
+          prop="assessmentConfigureId"
+        />
+        <el-table-column label="考核年" align="center" prop="assessmentYear" />
+        <el-table-column label="考核月" align="center" prop="assessmentMonth" />
+        <el-table-column label="部门" align="center" prop="dept" />
+        <el-table-column label="姓名" align="center" prop="nickName" />
+        <el-table-column label="岗位" align="center" prop="postList">
+          <template slot-scope="scope">
+            {{
+              scope.row.postList
+                .map((item) => (item != null ? item.postName : "无岗位"))
+                .join(" 、 ")
+            }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="考核类型"
+          align="center"
+          prop="assessmentTypeLabel"
+          :formatter="assessmentTypeFormat"
+        />
+        <el-table-column label="kpi得分" align="center" prop="kpiScore">
+          <template slot-scope="scope">
+            <p v-if="scope.row.kpiScore == null || scope.row.kpiScore === ''">
+              ——
+            </p>
+            <p v-else>
+              {{ scope.row.kpiScore }}
+            </p>
+          </template>
+        </el-table-column>
+        <el-table-column label="考核状态" align="center" prop="isStartLabel">
+          <template slot-scope="scope">
+            <el-tag :type="getType(scope.row.isStart)">{{
+              scope.row.isStartLabel
+            }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="操作"
+          align="center"
+          class-name="small-padding fixed-width"
+        >
+          <template slot-scope="scope">
+            <router-link
+              :to="'/assessment/mylist/data/' + scope.row.assessmentConfigureId"
+              class="link-type"
+            >
+              <span>详情/申诉</span>
+            </router-link>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <pagination
+        v-show="total > 0"
+        :total="total"
+        :page.sync="queryParams.pageNum"
+        :limit.sync="queryParams.pageSize"
+        @pagination="getList"
+      />
+    </div>
+  </div>
+</template>
+
+<script>
+import {
+  listAssessmentConfigure,
+  listAssessmentConfigureMylist,
+  getAssessmentConfigure,
+  delAssessmentConfigure,
+  addAssessmentConfigure,
+  updateAssessmentConfigure,
+  exportAssessmentConfigure,
+} from "@/api/performance/assessmentConfigure";
+
+export default {
+  name: "AssessmentConfigure",
+  components: {},
+  data() {
+    return {
+      // 遮罩层
+      loading: true,
+      // 选中数组
+      ids: [],
+      // 非单个禁用
+      single: true,
+      //考核类型
+      assessmentTypeOptions: [],
+      // 非多个禁用
+      multiple: true,
+      // 显示搜索条件
+      showSearch: true,
+      //考核状态
+      StatusType: ["", "success", "info"],
+      //考核配置状态字典
+      assessmentStatusOptions: [],
+      // 总条数
+      total: 0,
+      // KPI考核项配置表格数据
+      assessmentConfigureList: [],
+      // 弹出层标题
+      title: "",
+      // 是否显示弹出层
+      open: false,
+      // 查询参数
+      queryParams: {
+        pageNum: 1,
+        pageSize: 10,
+        assessmentConfigureId: null,
+        kpiContractId: null,
+        assessmentType: null,
+        kpiScore: null,
+        assessmentYear: null,
+        assessmentMonth: null,
+        nickName: null,
+        deptName: null,
+        isStart: null,
+        createBy: null,
+        createTime: null,
+        updateBy: null,
+        updateTime: null,
+        deleteBy: null,
+        deleteTime: null,
+        deleteStatus: null,
+      },
+      // 表单参数
+      form: {},
+      // 表单校验
+      rules: {
+        kpiContractId: [
+          { required: true, message: "合约配置id不能为空", trigger: "blur" },
+        ],
+        assessmentType: [
+          { required: true, message: "考核类型不能为空", trigger: "change" },
+        ],
+        isStart: [
+          {
+            required: true,
+            message: "配置是否已启动不能为空",
+            trigger: "blur",
+          },
+        ],
+        createBy: [
+          { required: true, message: "创建人不能为空", trigger: "blur" },
+        ],
+        createTime: [
+          { required: true, message: "创建时间不能为空", trigger: "blur" },
+        ],
+      },
+    };
+  },
+  created() {
+    this.getList();
+  },
+  methods: {
+    /** 查询KPI考核项配置列表 */
+    getList() {
+      this.loading = true;
+      listAssessmentConfigureMylist(this.queryParams).then((response) => {
+        this.assessmentConfigureList = response.rows;
+        this.total = response.total;
+        this.loading = false;
+      });
+      this.getDicts("gs_assessment_type").then((response) => {
+        this.assessmentTypeOptions = response.data;
+      });
+      this.getDicts("ASSESSMENT_CONFIGURATION_STATUS").then((response) => {
+        this.assessmentStatusOptions = response.data;
+      });
+    },
+    // 取消按钮
+    cancel() {
+      this.open = false;
+      this.reset();
+    },
+    // 表单重置
+    reset() {
+      this.form = {
+        assessmentConfigureId: null,
+        kpiContractId: null,
+        assessmentType: null,
+        kpiScore: null,
+        assessmentStatus: null,
+        assessmentYear: null,
+        assessmentMonth: null,
+        isStart: null,
+        createBy: null,
+        createTime: null,
+        updateBy: null,
+        updateTime: null,
+        deleteBy: null,
+        deleteTime: null,
+        deleteStatus: 0,
+      };
+      this.resetForm("form");
+    },
+    // 考核类型字典翻译
+    assessmentTypeFormat(row, column) {
+      return this.selectDictLabel(
+        this.assessmentTypeOptions,
+        row.assessmentType
+      );
+    },
+    // 考核配置字典翻译
+    assessmentStatusFormat(row, column) {
+      return this.selectDictLabel(
+        this.assessmentStatusOptions,
+        row.assessmentStatus
+      );
+    },
+    /** 搜索按钮操作 */
+    handleQuery() {
+      this.queryParams.pageNum = 1;
+      this.getList();
+    },
+    /** 重置按钮操作 */
+    resetQuery() {
+      this.resetForm("queryForm");
+      this.handleQuery();
+    },
+    // 多选框选中数据
+    handleSelectionChange(selection) {
+      this.ids = selection.map((item) => item.assessmentConfigureId);
+      this.single = selection.length !== 1;
+      this.multiple = !selection.length;
+    },
+    /** 新增按钮操作 */
+    handleAdd() {
+      this.reset();
+      this.open = true;
+      this.title = "添加KPI考核项配置";
+    },
+    /** 修改按钮操作 */
+    handleUpdate(row) {
+      this.reset();
+      const assessmentConfigureId = row.assessmentConfigureId || this.ids;
+      getAssessmentConfigure(assessmentConfigureId).then((response) => {
+        this.form = response.data;
+        this.open = true;
+        this.title = "修改KPI考核项配置";
+      });
+    },
+    /** 提交按钮 */
+    submitForm() {
+      this.$refs["form"].validate((valid) => {
+        if (valid) {
+          if (this.form.assessmentConfigureId != null) {
+            updateAssessmentConfigure(this.form).then((response) => {
+              this.msgSuccess("修改成功");
+              this.open = false;
+              this.getList();
+            });
+          } else {
+            addAssessmentConfigure(this.form).then((response) => {
+              this.msgSuccess("新增成功");
+              this.open = false;
+              this.getList();
+            });
+          }
+        }
+      });
+    },
+    /** 删除按钮操作 */
+    handleDelete(row) {
+      const assessmentConfigureIds = row.assessmentConfigureId || this.ids;
+      this.$confirm(
+        '是否确认删除KPI考核项配置编号为"' +
+          assessmentConfigureIds +
+          '"的数据项?',
+        "警告",
+        {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        }
+      )
+        .then(function () {
+          return delAssessmentConfigure(assessmentConfigureIds);
+        })
+        .then(() => {
+          this.getList();
+          this.msgSuccess("删除成功");
+        });
+    },
+    /** 导出按钮操作 */
+    handleExport() {
+      const queryParams = this.queryParams;
+      this.$confirm("是否确认导出所有KPI考核项配置数据项?", "警告", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(function () {
+          return exportAssessmentConfigure(queryParams);
+        })
+        .then((response) => {
+          this.download(response.msg);
+        });
+    },
+    getType(statue) {
+      return this.StatusType[parseInt(statue)];
+    },
+  },
+};
+</script>
